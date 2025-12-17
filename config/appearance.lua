@@ -1,8 +1,29 @@
 local wezterm = require("wezterm")
 local colors = require("colors.custom")
+local platform = require("utils.platform")()
 -- local fonts = require('config.fonts')
 
-return {
+-- prefered gpu selection function
+local function select_preferred_gpu(list)
+  local vulkan_gpu_list = nil
+  for _, gpu in ipairs(list) do
+    if gpu.backend == "Vulkan" then
+      vulkan_gpu_list = vulkan_gpu_list or gpu
+      if gpu.driver and gpu.driver:lower() == "intel open-source mesa driver" then
+        return gpu
+      end
+    end
+  end
+  return vulkan_gpu_list
+end
+
+-- fix lag on Linux when using NVIDIA GPU
+local prefered_gpu = nil
+if platform.is_linux then
+  prefered_gpu = select_preferred_gpu(wezterm.gui.enumerate_gpus())
+end
+
+local config = {
   term = "xterm-256color",
   animation_fps = 60,
   max_fps = 60,
@@ -77,3 +98,9 @@ return {
   },
   inactive_pane_hsb = { saturation = 1.0, brightness = 1.0 },
 }
+
+if prefered_gpu then
+  config.webgpu_preferred_adapter = prefered_gpu
+end
+
+return config
